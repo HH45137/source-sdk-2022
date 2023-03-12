@@ -102,7 +102,7 @@ struct levellist_t
 
 struct EHandlePlaceholder_t // Engine does some of the game writing (alas, probably shouldn't), but can't see ehandle.h
 {
-	unsigned long i;
+	uintp i;
 };
 
 //-------------------------------------
@@ -278,7 +278,7 @@ private:
 
 		CHashElement( const CBaseEntity *pEntity, int index) : pEntity(pEntity), index(index) {}
 		CHashElement( const CBaseEntity *pEntity ) : pEntity(pEntity) {}
-		CHashElement() {}
+		CHashElement() = default;
 	};
 
 	class CHashFuncs
