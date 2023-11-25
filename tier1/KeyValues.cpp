@@ -2179,6 +2179,34 @@ void KeyValues::RecursiveMergeKeyValues( KeyValues *baseKV )
 	}
 }
 
+static int s_nSteamDeckCached = -1;
+
+bool IsSteamDeck()
+{
+	if (s_nSteamDeckCached == -1) {
+		if ( CommandLine()->CheckParm( "-nogamepadui" ) != 0 )
+		{
+			s_nSteamDeckCached = 0;
+		}
+		else
+		{
+			if ( CommandLine()->CheckParm( "-gamepadui" ) != 0 )
+			{
+				s_nSteamDeckCached = 1;
+			}
+			else
+			{
+				char *deck = getenv("SteamDeck");
+				if ( deck == 0 || *deck == 0 )
+					s_nSteamDeckCached = 0;
+				else
+					s_nSteamDeckCached = atoi(deck) != 0;
+			}
+		}
+	}
+	return s_nSteamDeckCached;
+}
+
 //-----------------------------------------------------------------------------
 // Returns whether a keyvalues conditional evaluates to true or false
 // Needs more flexibility with conditionals, checking convars would be nice.
@@ -2195,8 +2223,8 @@ bool EvaluateConditional( const char *str )
 	if ( *str == '!' )
 		bNot = true;
 
-	if( Q_stristr( str, "$DECK" ) )
-		return false ^ bNot; // Steam deck unsupported
+	if ( Q_stristr( str, "$DECK" ) )
+		return IsSteamDeck() ^ bNot;
 
 	if ( Q_stristr( str, "$X360" ) )
 		return IsX360() ^ bNot;
@@ -2208,10 +2236,10 @@ bool EvaluateConditional( const char *str )
 		return IsWindows() ^ bNot;
 
 	if ( Q_stristr( str, "$OSX" ) )
-		return IsOSX() ^ bNot;
+		return bNot;
 
 	if ( Q_stristr( str, "$LINUX" ) )
-		return IsLinux() ^ bNot;
+		return ( IsLinux() || IsBSD() || IsOSX() ) ^ bNot;
 
 	if ( Q_stristr( str, "$POSIX" ) )
 		return IsPosix() ^ bNot;

@@ -433,11 +433,6 @@ bool CVTFTexture::Init( int nWidth, int nHeight, int nDepth, ImageFormat fmt, in
 	m_nFrameCount = iFrameCount;
 
 	m_nFaceCount = (iFlags & TEXTUREFLAGS_ENVMAP) ? CUBEMAP_FACE_COUNT : 1;
-	if ( IsX360() && ( iFlags & TEXTUREFLAGS_ENVMAP ) )
-	{
-		// 360 has no reason to support sphere map
-		m_nFaceCount = CUBEMAP_FACE_COUNT-1;
-	}
 
 #if defined( _X360 )
 	m_nMipSkipCount = 0;
@@ -606,7 +601,7 @@ void CVTFTexture::ImageFileInfo( int nFrame, int nFace, int nMipLevel, int *pSta
 	int nFacesToRead = m_nFaceCount;
 	if ( IsCubeMap() )
 	{
-		if ((m_nVersion[0] == 7) && (m_nVersion[1] < 1))
+		if ((m_nVersion[0] == 7) && (m_nVersion[1] < 1 || m_nVersion[1] > 4))
 		{
 			nFacesToRead = 6;
 			if (nFace == CUBEMAP_FACE_SPHEREMAP)
