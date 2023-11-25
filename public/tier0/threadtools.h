@@ -52,12 +52,6 @@
 #pragma once
 #pragma warning(push)
 #pragma warning(disable:4251)
-
-extern "C"
-{
-	void __declspec(dllimport) __stdcall Sleep( unsigned long );
-}
-
 #endif
 
 #ifdef COMPILER_MSVC64
@@ -200,6 +194,8 @@ PLATFORM_INTERFACE bool ReleaseThreadHandle( ThreadHandle_t );
 
 //-----------------------------------------------------------------------------
 
+PLATFORM_INTERFACE void ThreadSleep(unsigned duration = 0);
+PLATFORM_INTERFACE void ThreadNanoSleep(unsigned ns);
 PLATFORM_INTERFACE ThreadId_t ThreadGetCurrentId();
 PLATFORM_INTERFACE ThreadHandle_t ThreadGetCurrentHandle();
 PLATFORM_INTERFACE int ThreadGetPriority( ThreadHandle_t hThread = NULL );
@@ -233,10 +229,10 @@ inline void ThreadPause()
 {
 #if defined( COMPILER_PS3 )
 	__db16cyc();
-#elif defined( COMPILER_GCC ) && (defined( __i386__ ) || defined( __x86_64__ ))
-	__asm __volatile( "pause" );
-#elif defined( POSIX )
+#elif defined(__arm__) || defined(__aarch64__)
         sched_yield();
+#elif defined( COMPILER_GCC )
+	__asm __volatile( "pause" );
 #elif defined ( COMPILER_MSVC64 )
 	_mm_pause();
 #elif defined( COMPILER_MSVC32 )
@@ -248,36 +244,6 @@ inline void ThreadPause()
 	__asm { or r1,r1,r1 } 
 #else
 #error "implement me"
-#endif
-}
-
-inline void ThreadSleep(unsigned nMilliseconds = 0)
-{
-	if( nMilliseconds == 0 )
-	{
-		ThreadPause();
-		return;
-        }
-
-#ifdef _WIN32
-
-#ifdef _WIN32_PC
-        static bool bInitialized = false;
-        if ( !bInitialized )
-        {
-                bInitialized = true;
-                // Set the timer resolution to 1 ms (default is 10.0, 15.6, 2.5, 1.0 or
-                // some other value depending on hardware and software) so that we can
-                // use Sleep( 1 ) to avoid wasting CPU time without missing our frame
-                // rate.
-                timeBeginPeriod( 1 );
-        }
-#endif
-	Sleep( nMilliseconds );
-#elif PS3
-	sys_timer_usleep( nMilliseconds * 1000 );
-#elif defined(POSIX)
-        usleep( nMilliseconds * 1000 );
 #endif
 }
 
@@ -319,7 +285,7 @@ PLATFORM_INTERFACE void ThreadSetAffinity( ThreadHandle_t hThread, int nAffinity
 #error Every platform needs to define ThreadMemoryBarrier to at least prevent compiler reordering
 #endif
 
-#if defined( _LINUX ) || defined( _OSX ) || defined(PLATFORM_BSD)
+#if defined( _LINUX ) || defined( _OSX )
 #define USE_INTRINSIC_INTERLOCKED
 // linux implementation
 inline int32 ThreadInterlockedIncrement( int32 volatile *p )
@@ -520,7 +486,7 @@ PLATFORM_INTERFACE void ThreadNotifySyncReleasing(void *p);
 
 #ifndef NO_THREAD_LOCAL
 
-#if defined(WIN32) || defined(OSX) ||  defined( _PS3 ) || ( defined (_LINUX) ) || defined(PLATFORM_BSD)
+#if defined(WIN32) || defined(OSX) ||  defined( _PS3 ) || ( defined (_LINUX) )
 #ifndef __AFXTLS_H__ // not compatible with some Windows headers
 
 #if defined(_PS3)
@@ -643,7 +609,7 @@ private:
 	class CThreadLocalPtr : private CThreadLocalBase
 	{
 	public:
-		CThreadLocalPtr() = default;
+		CThreadLocalPtr() {}
 
 		operator const void *() const          					{ return (const T *)Get(); }
 		operator void *()                      					{ return (T *)Get(); }

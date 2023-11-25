@@ -114,12 +114,6 @@ void CDbgLogger::Init(const char *logfile)
 #else
 		fprintf(file, ">>> Engine(arch:%s) started at %s\n", GetProcessorArchName(), szTime);
 #endif
-
-#ifdef GNUC
-		fprintf(file, "Compiler version: %s\n", __VERSION__);
-#endif
-		fprintf(file, "Compiler CFLAGS: %s\n", WAF_CFLAGS);
-		fprintf(file, "Compiler LDFLAGS: %s\n", WAF_LDFLAGS);
 		fflush(file);
 
 		for( int i = 0; i < iMsg; i++ )
@@ -439,7 +433,7 @@ static SpewRetval_t _SpewMessage( SpewType_t spewType, const char *pGroupName, i
 
 	/* direct it to the appropriate target(s) */
 	SpewRetval_t ret;
-	assert( (void*)g_pSpewInfo == (void*)NULL );
+	assert( g_pSpewInfo == (void*)NULL );
 	SpewInfo_t spewInfo =
 	{
 		pColor,

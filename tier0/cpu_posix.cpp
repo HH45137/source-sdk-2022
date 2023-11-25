@@ -11,11 +11,6 @@
 #include <linux/sysctl.h>
 #else
 #include <sys/sysctl.h>
-# ifdef __APPLE__
-#  define CPUFREQ_SYSCTL "hw.cpufrequency_max"
-# else
-#  define CPUFREQ_SYSCTL "dev.cpu.0.freq"
-# endif
 #endif
 #include <sys/time.h>
 #include <unistd.h>
@@ -51,15 +46,18 @@ static inline uint64 diff(uint64 v1, uint64 v2)
 		return -d;
 }
 
-#if defined(OSX) || defined(PLATFORM_BSD)
+#ifdef OSX
 
-// Mac or BSD
+// Mac
 uint64 GetCPUFreqFromPROC()
 {
-	uint64 freq_hz = 0;
-	size_t freq_size = sizeof(freq_hz);
-	int retval = sysctlbyname(CPUFREQ_SYSCTL, &freq_hz, &freq_size, NULL, 0);
-	return freq_hz;
+	int mib[2] = {CTL_HW, HW_CPU_FREQ};
+	uint64 frequency = 0;
+	size_t len = sizeof(frequency);
+
+	if (sysctl(mib, 2, &frequency, &len, NULL, 0) == -1)
+		return 0;
+	return frequency;
 }
 
 #else
@@ -101,8 +99,14 @@ uint64 GetCPUFreqFromPROC()
 
 uint64 CalculateCPUFreq()
 {
-#if defined(__APPLE__) || defined(PLATFORM_BSD)
-	return GetCPUFreqFromPROC();
+#ifdef __APPLE__
+	uint64 freq_hz = 0;
+	size_t freq_size = sizeof(freq_hz);
+	int retval = sysctlbyname("hw.cpufrequency_max", &freq_hz, &freq_size, NULL, 0);
+	// MoeMod : TODO dont know how to get freq on Apple Silicon
+	if(!freq_hz)
+		freq_hz = 3200000000;
+	return freq_hz;
 #else
 	// Try to open cpuinfo_max_freq. If the kernel was built with cpu scaling support disabled, this will fail.
 	FILE *fp = fopen( "/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq", "r" );
@@ -123,9 +127,9 @@ uint64 CalculateCPUFreq()
 			return retVal * 1000;
 		}
 	}
+#endif
 
 #if !defined(__arm__) && !defined(__aarch64__)
-	// fallback mechanism to calculate when failed
 	// Compute the period. Loop until we get 3 consecutive periods that
 	// are the same to within a small error. The error is chosen
 	// to be +/- 0.02% on a P-200.
@@ -175,10 +179,7 @@ uint64 CalculateCPUFreq()
 	}
 
 	return period;
-#else
-	// ARM hard-coded frequency
+#endif
 	return (uint64)2000000000;
-#endif // if !ARM
-#endif // if APPLE
 }
 

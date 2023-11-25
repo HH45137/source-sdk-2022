@@ -34,7 +34,13 @@
 
 #undef PROTECTED_THINGS_ENABLE
 
-#include "SDL_opengl.h"
+#ifdef OSX
+#include <OpenGL/OpenGL.h>
+#else
+#include <GL/gl.h>
+#include <GL/glext.h>
+#endif
+
 #include "tier0/basetypes.h"
 #include "tier0/platform.h"
 

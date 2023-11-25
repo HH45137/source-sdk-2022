@@ -30,7 +30,7 @@
 class CViewVectors
 {
 public:
-	CViewVectors() = default;
+	CViewVectors() {}
 
 	CViewVectors( 
 		Vector vView,

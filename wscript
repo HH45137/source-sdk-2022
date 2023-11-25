@@ -119,22 +119,6 @@ def define_platform(conf):
 			'_ALLOW_MSC_VER_MISMATCH',
 			'NO_X360_XDK'
 		])
-	elif conf.env.DEST_OS == 'darwin':
-		conf.env.append_unique('DEFINES', [
-			'OSX=1', '_OSX=1',
-			'POSIX=1', '_POSIX=1', 'PLATFORM_POSIX=1',
-			'GNUC',
-			'NO_HOOK_MALLOC',
-			'_DLL_EXT=.dylib'
-		])
-
-	elif conf.env.DEST_OS in ['freebsd', 'openbsd', 'netbsd', 'dragonflybsd']: # Tested only in freebsd
-		conf.env.append_unique('DEFINES', [
-			'POSIX=1', '_POSIX=1', 'PLATFORM_POSIX=1',
-			'GNUC', # but uses clang
-			'PLATFORM_BSD=1',
-			'_DLL_EXT=.so'
-		])
 
 	if conf.options.DEBUG_ENGINE:
 		conf.env.append_unique('DEFINES', [
@@ -151,12 +135,6 @@ def options(opt):
 	grp.add_option('-8', '--64bits', action = 'store_true', dest = 'ALLOW64', default = False,
 		help = 'allow targetting 64-bit engine(Linux/Windows/OSX x86 only) [default: %default]')
 
-	grp.add_option('-d', '--dedicated', action = 'store_true', dest = 'DEDICATED', default = False,
-		help = 'build dedicated server [default: %default]')
-
-	grp.add_option('--tests', action = 'store_true', dest = 'TESTS', default = False,
-		help = 'build unit tests [default: %default]')
-
 	grp.add_option('-D', '--debug-engine', action = 'store_true', dest = 'DEBUG_ENGINE', default = False,
 		help = 'build with -DDEBUG [default: %default]')
 
@@ -172,8 +150,8 @@ def options(opt):
 	grp.add_option('--use-ccache', action = 'store_true', dest = 'CCACHE', default = False,
 		help = 'build using ccache [default: %default]')
 
-	grp.add_option('--disable-warns', action = 'store_true', dest = 'DISABLE_WARNS', default = False,
-		help = 'build using ccache [default: %default]')
+	grp.add_option('--enable-warns', action = 'store_true', dest = 'ENABLE_WARNS', default = False,
+		help = 'enable warnings [default: %default]')
 
 	grp.add_option('--togles', action = 'store_true', dest = 'TOGLES', default = False,
 		help = 'build engine with ToGLES [default: %default]')
@@ -187,7 +165,7 @@ def options(opt):
 
 	opt.load('compiler_optimizations subproject')
 
-	opt.load('xcompile compiler_cxx compiler_c sdl2 clang_compilation_database strip_on_install_v2 waf_unit_test subproject')
+	opt.load('xcompile compiler_cxx compiler_c sdl2 clang_compilation_database strip_on_install waf_unit_test subproject')
 	if sys.platform == 'win32':
 		opt.load('msvc msdev msvs')
 	opt.load('reconfigure')
@@ -207,8 +185,6 @@ def configure(conf):
 	conf.load('subproject xcompile compiler_c compiler_cxx gitversion clang_compilation_database strip_on_install waf_unit_test enforce_pic')
 	if conf.env.DEST_OS == 'win32' and conf.env.DEST_CPU == 'amd64':
 		conf.load('masm')
-	elif conf.env.DEST_OS == 'darwin':
-		conf.load('mm_hook')
 
 	define_platform(conf)
 	conf.define('GIT_COMMIT_HASH', conf.env.GIT_VERSION)
@@ -216,9 +192,10 @@ def configure(conf):
 	conf.env.BIT32_MANDATORY = not conf.options.ALLOW64
 	if conf.env.BIT32_MANDATORY:
 		Logs.info('WARNING: will build engine for 32-bit target')
-		conf.load('force_32bit')
 
-	if conf.options.DISABLE_WARNS:
+	conf.load('force_32bit')
+
+	if not conf.options.ENABLE_WARNS:
 		compiler_optional_flags = ['-w']
 	else:
 		compiler_optional_flags = [
@@ -267,19 +244,13 @@ def configure(conf):
 		]
 
 		flags += ['-funwind-tables', '-fvisibility=default']
-	elif conf.env.COMPILER_CC != 'msvc' and conf.env.DEST_OS != 'darwin' and conf.env.DEST_CPU in ['x86', 'x86_64']:
-		flags += ['-march=core2']
+	elif conf.env.COMPILER_CC != 'msvc':
+		flags += ['-march=native']
 
 	if conf.env.DEST_CPU in ['x86', 'x86_64']:
 		flags += ['-mfpmath=sse']
 	elif conf.env.DEST_CPU in ['arm', 'aarch64']:
 		flags += ['-fsigned-char']
-
-	if conf.env.DEST_CPU == 'arm':
-		flags += ['-mfpu=neon-vfpv4']
-
-	if conf.env.DEST_OS == 'freebsd':
-		linkflags += ['-lexecinfo']
 
 	if conf.env.DEST_OS != 'win32':
 		cflags += flags
@@ -362,10 +333,7 @@ def configure(conf):
 			else:
 				conf.check_pkg('freetype2', 'FT2', FT2_CHECK)
 				conf.check_pkg('fontconfig', 'FC', FC_CHECK)
-				if conf.env.DEST_OS == "darwin":
-					conf.env.FRAMEWORK_OPENAL = "OpenAL"
-				else:
-					conf.check_cfg(package='openal', uselib_store='OPENAL', args=['--cflags', '--libs'])
+				conf.check_cfg(package='openal', uselib_store='OPENAL', args=['--cflags', '--libs'])
 				conf.check_cfg(package='libjpeg', uselib_store='JPEG', args=['--cflags', '--libs'])
 				conf.check_cfg(package='libpng', uselib_store='PNG', args=['--cflags', '--libs'])
 				conf.check_cfg(package='libcurl', uselib_store='CURL', args=['--cflags', '--libs'])
@@ -386,21 +354,6 @@ def configure(conf):
 			conf.check(lib='ssl', uselib_store='SSL')
 		conf.check(lib='android_support', uselib_store='ANDROID_SUPPORT')
 		conf.check(lib='opus', uselib_store='OPUS')
-
-	if conf.env.DEST_OS == "darwin":
-			conf.check(lib='iconv', uselib_store='ICONV')
-			conf.env.FRAMEWORK_APPKIT = "AppKit"
-			conf.env.FRAMEWORK_IOKIT = "IOKit"
-			conf.env.FRAMEWORK_FOUNDATION = "Foundation"
-			conf.env.FRAMEWORK_COREFOUNDATION = "CoreFoundation"
-			conf.env.FRAMEWORK_COREGRAPHICS = "CoreGraphics"
-			conf.env.FRAMEWORK_OPENGL = "OpenGL"
-			conf.env.FRAMEWORK_CARBON = "Carbon"
-			conf.env.FRAMEWORK_APPLICATIONSERVICES = "ApplicationServices"
-			conf.env.FRAMEWORK_CORESERVICES = "CoreServices"
-			conf.env.FRAMEWORK_COREAUDIO = "CoreAudio"
-			conf.env.FRAMEWORK_AUDIOTOOLBOX = "AudioToolbox"
-			conf.env.FRAMEWORK_SYSTEMCONFIGURATION = "SystemConfiguration"
 
 	if conf.env.DEST_OS != 'win32':
 		conf.check_cc(lib='dl', mandatory=False)

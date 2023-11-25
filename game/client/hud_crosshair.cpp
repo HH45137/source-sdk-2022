@@ -252,37 +252,9 @@ void CHudCrosshair::Paint( void )
 		return;
 
 	float flWeaponScale = 1.f;
-<<<<<<< HEAD
 	float flPlayerScale = cl_crosshair_scale.GetFloat();
 	float flWidth = flWeaponScale * flPlayerScale * 32.0;
 	float flHeight = flWeaponScale * flPlayerScale * 32.0;
-=======
-	int iTextureW = m_pCrosshair->Width();
-	int iTextureH = m_pCrosshair->Height();
-	C_BaseCombatWeapon *pWeapon = pPlayer->GetActiveWeapon();
-	if ( pWeapon )
-	{
-		pWeapon->GetWeaponCrosshairScale( flWeaponScale );
-	}
-
-	int iScreenDiv = 1600;
-	if ( IsSteamDeck() )
-		iScreenDiv = 1440;
-
-	float flPlayerScale;
-	if ( !m_pCrosshair->bRenderUsingFont )
-		flPlayerScale = (ScreenHeight() / iScreenDiv) + 1;
-	else
-		flPlayerScale = 1.0f;
-#ifdef TF_CLIENT_DLL
-	Color clr( cl_crosshair_red.GetInt(), cl_crosshair_green.GetInt(), cl_crosshair_blue.GetInt(), 255 );
-	flPlayerScale = cl_crosshair_scale.GetFloat() / 32.0f;  // the player can change the scale in the options/multiplayer tab
-#else
-	Color clr = m_clrCrosshair;
-#endif
-	float flWidth = flWeaponScale * flPlayerScale * (float)iTextureW;
-	float flHeight = flWeaponScale * flPlayerScale * (float)iTextureH;
->>>>>>> refs/heads/2023-update
 	int iWidth = (int)( flWidth + 0.5f );
 	int iHeight = (int)( flHeight + 0.5f );
 	int iX = (int)( x + 0.5f );

@@ -69,8 +69,6 @@
 #define GL_ALPHA_TEST_FUNC_QCOM 0x0BC1
 #define GL_ALPHA_TEST_REF_QCOM 0x0BC2
 
-#define GLSL_VERSION "#version 300 es\n"
-
 extern void GLMDebugPrintf( const char *pMsg, ... );
 
 extern uint g_nTotalDrawsOrClears, g_nTotalVBLockBytes, g_nTotalIBLockBytes;
@@ -1367,7 +1365,7 @@ class GLMContext
 		void FlushDrawStatesNoShaders();
 				
 		// drawing
-#if 1 //ifndef OSX
+#ifndef OSX
 		FORCEINLINE void DrawRangeElements(	GLenum mode, GLuint start, GLuint end, GLsizei count, GLenum type, const GLvoid *indices, uint baseVertex, CGLMBuffer *pIndexBuf );
 		void DrawRangeElementsNonInline(	GLenum mode, GLuint start, GLuint end, GLsizei count, GLenum type, const GLvoid *indices, uint baseVertex, CGLMBuffer *pIndexBuf );
 #else
@@ -1817,7 +1815,7 @@ class GLMContext
 	CTSQueue<CGLMTex*> m_DeleteTextureQueue;
 };
 
-#if 1 //ifndef OSX
+#ifndef OSX
 
 FORCEINLINE void GLMContext::DrawRangeElements(	GLenum mode, GLuint start, GLuint end, GLsizei count, GLenum type, const GLvoid *indices, uint baseVertex, CGLMBuffer *pIndexBuf )
 {

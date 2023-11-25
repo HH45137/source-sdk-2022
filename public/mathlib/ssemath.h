@@ -2604,20 +2604,15 @@ public:
 		return Vector( X(idx), Y(idx), Z(idx) );
 	}
 	
-	FourVectors(void) = default;
+	FourVectors(void)
+	{
+	}
 
 	FourVectors( FourVectors const &src )
 	{
 		x=src.x;
 		y=src.y;
 		z=src.z;
-	}
-
-	FourVectors( fltx4 x, fltx4 y, fltx4 z )
-	{
-		this->x=x;
-		this->y=y;
-		this->z=z;
 	}
 
 	FORCEINLINE void operator=( FourVectors const &src )

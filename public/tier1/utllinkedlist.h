@@ -257,8 +257,9 @@ public:
 		typedef _CUtlLinkedList_constiterator_t< List_t > Base;
 
 		// Default constructor -- gives a currently unusable iterator.
-		_CUtlLinkedList_iterator_t() = default;
-
+		_CUtlLinkedList_iterator_t()
+		{
+		}
 		// Normal constructor.
 		_CUtlLinkedList_iterator_t( const List_t& list, IndexType_t index )
 			: _CUtlLinkedList_constiterator_t< List_t >( list, index )
@@ -1230,7 +1231,7 @@ private:
 
 	struct Node_t
 	{
-		Node_t() = default;
+		Node_t() {}
 		Node_t( const T &_elem ) : elem( _elem ) {}
 
 		T elem;

@@ -11,7 +11,6 @@
 #include "filesystem.h"
 #include "tier0/icommandline.h"
 #include "vgui_controls/Button.h"
-#include "viewrender.h"
 
 #define STB_RECT_PACK_IMPLEMENTATION
 #include "stb_rect_pack.h"
@@ -32,7 +31,6 @@ extern IMatSystemSurface *g_pMatSystemSurface;
 extern ConVar sensitivity;
 
 #define TOUCH_DEFAULT_CFG "touch_default.cfg"
-#define MIN_ALPHA_IN_CUTSCENE 20
 
 ConVar touch_enable( "touch_enable", TOUCH_DEFAULT, FCVAR_ARCHIVE );
 ConVar touch_draw( "touch_draw", "1", FCVAR_ARCHIVE );
@@ -75,6 +73,7 @@ CTouchPanel::CTouchPanel( vgui::VPANEL parent ) : BaseClass( NULL, "TouchPanel" 
 
 	SetVisible( true );
 }
+
 
 void CTouchPanel::Paint()
 {
@@ -374,7 +373,6 @@ void CTouchControls::Init()
 	m_flPreviousYaw = m_flPreviousPitch = 0.f;
 	gridcolor = rgba_t(255, 0, 0, 50);
 
-	m_bCutScene = false;
 	showtexture = hidetexture = resettexture = closetexture = joytexture = 0;
 	configchanged = false;
 
@@ -420,7 +418,6 @@ void CTouchControls::Init()
 	textureList.AddToTail(texture);
 
 	CreateAtlasTexture();
-	m_flHideTouch = 0.f;
 
 	initialized = true;
 }
@@ -623,34 +620,16 @@ void CTouchControls::Frame()
 	if (!initialized)
 		return;
 
-	C_BasePlayer *pPlayer = C_BasePlayer::GetLocalPlayer();
-
-	if( pPlayer && (pPlayer->GetFlags() & FL_FROZEN || g_pIntroData != NULL) )
-	{
-		if( !m_bCutScene )
-		{
-			m_bCutScene = true;
-			m_AlphaDiff = 0;
-		}
-	}
-	else if( !pPlayer )
-	{
-		m_bCutScene = false;
-		m_AlphaDiff = 0;
-		m_flHideTouch = 0;
-	}
-	else
-		m_bCutScene = false;
-
 	if( touch_enable.GetBool() && touch_draw.GetBool() && !enginevgui->IsGameUIVisible() ) Paint();
 }
 
-void CTouchControls::Paint()
+void CTouchControls::Paint( )
 {
 	if (!initialized)
 		return;
 
 	CUtlLinkedList<CTouchButton*>::iterator it;
+	CMatRenderContextPtr pRenderContext( g_pMaterialSystem );
 
 	if( state == state_edit )
 	{
@@ -684,10 +663,9 @@ void CTouchControls::Paint()
 		}
 	}
 
-	CMatRenderContextPtr pRenderContext( g_pMaterialSystem );
-	int meshCount = 0;
+	m_pMesh = pRenderContext->GetDynamicMesh();
 
-	// Draw non-atlas touch textures
+	int meshCount = 0;
 	for( it = btns.begin(); it != btns.end(); it++ )
 	{
 		CTouchButton *btn = *it;
@@ -698,13 +676,10 @@ void CTouchControls::Paint()
 
 			if( t->textureID )
 			{
-				m_pMesh = pRenderContext->GetDynamicMesh( true, NULL, NULL, g_pMatSystemSurface->DrawGetTextureMaterial(t->textureID) );
+				pRenderContext->Bind( g_pMatSystemSurface->DrawGetTextureMaterial(t->textureID) );
+				meshBuilder.Begin( m_pMesh, MATERIAL_QUADS, meshCount );
 
-				meshBuilder.Begin( m_pMesh, MATERIAL_QUADS, 1 );
-
-				int alpha = (btn->color.a > MIN_ALPHA_IN_CUTSCENE) ? max(MIN_ALPHA_IN_CUTSCENE, btn->color.a-m_AlphaDiff) : btn->color.a;
-				rgba_t color(btn->color.r, btn->color.g, btn->color.b, alpha);
-
+				rgba_t color(btn->color.r, btn->color.g, btn->color.b, btn->color.a);
 				meshBuilder.Position3f( btn->x1*screen_w, btn->y1*screen_h, 0 );
 				meshBuilder.Color4ubv( color );
 				meshBuilder.TexCoord2f( 0, 0, 0 );
@@ -726,7 +701,6 @@ void CTouchControls::Paint()
 				meshBuilder.AdvanceVertexF<VTX_HAVEPOS | VTX_HAVECOLOR, 1>();
 
 				meshBuilder.End();
-
 				m_pMesh->Draw();
 			}
 			else if( !btn->texture->isInAtlas )
@@ -737,7 +711,7 @@ void CTouchControls::Paint()
 		}
 	}
 
-	m_pMesh = pRenderContext->GetDynamicMesh( true, NULL, NULL, g_pMatSystemSurface->DrawGetTextureMaterial(touchTextureID) );
+	pRenderContext->Bind( g_pMatSystemSurface->DrawGetTextureMaterial(touchTextureID) );
 	meshBuilder.Begin( m_pMesh, MATERIAL_QUADS, meshCount );
 
 	for( it = btns.begin(); it != btns.end(); it++ )
@@ -748,9 +722,7 @@ void CTouchControls::Paint()
 		{
 			CTouchTexture *t = btn->texture;
 
-			int alpha = (btn->color.a > MIN_ALPHA_IN_CUTSCENE) ? max(MIN_ALPHA_IN_CUTSCENE, btn->color.a-m_AlphaDiff) : btn->color.a;
-			rgba_t color(btn->color.r, btn->color.g, btn->color.b, alpha);
-
+			rgba_t color(btn->color.r, btn->color.g, btn->color.b, btn->color.a);
 			meshBuilder.Position3f( btn->x1*screen_w, btn->y1*screen_h, 0 );
 			meshBuilder.Color4ubv( color );
 			meshBuilder.TexCoord2f( 0, t->X0, t->Y0 );
@@ -775,17 +747,6 @@ void CTouchControls::Paint()
 
 	meshBuilder.End();
 	m_pMesh->Draw();
-
-
-	if( m_flHideTouch < gpGlobals->curtime )
-	{
-		if( m_bCutScene && m_AlphaDiff < 255-MIN_ALPHA_IN_CUTSCENE )
-			m_AlphaDiff++;
-		else if( !m_bCutScene && m_AlphaDiff > 0 )
-			m_AlphaDiff--;
-
-		m_flHideTouch = gpGlobals->curtime + 0.002f;
-	}
 }
 
 void CTouchControls::AddButton( const char *name, const char *texturefile, const char *command, float x1, float y1, float x2, float y2, rgba_t color, int round, float aspect, int flags )
